@@ -1,0 +1,111 @@
+#safqat-ai-trainer-panel {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  width: 320px;
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  color: #fff;
+  z-index: 9999999;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-family: Arial, sans-serif;
+  direction: rtl;
+  display: flex;
+  flex-direction: column;
+}
+
+#safqat-trainer-header {
+  padding: 12px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  font-weight: bold;
+}
+
+#safqat-trainer-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.safqat-btn {
+  background: #6c5ce7;
+  color: #fff;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  text-align: center;
+  transition: opacity 0.2s;
+  width: 100%;
+}
+.safqat-btn:hover { opacity: 0.9; }
+
+.safqat-btn.success { background: #00b894; }
+.safqat-btn.error { background: #d63031; }
+
+#safqat-summary-box {
+  background: #2d3436;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+.safqat-mic-container {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.safqat-mic-btn {
+  background: #fdcb6e;
+  color: #2d3436;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 28px;
+  transition: all 0.2s;
+}
+
+.safqat-mic-btn.recording {
+  background: #ff7675;
+  color: #fff;
+  animation: pulse 1s infinite;
+}
+
+.safqat-loader {
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top: 3px solid #fff;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

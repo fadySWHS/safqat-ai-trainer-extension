@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Safqat AI Trainer",
+  "version": "1.0",
+  "description": "An upper layer tool to train Safqat.ai agent, summarize chats, and record voice feedback in proper Arabic.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://safqat.ai/*",
+    "https://openrouter.ai/*",
+    "https://api.replicate.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://safqat.ai/*"],
+      "css": ["style.css"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Safqat AI Trainer Settings"
+  }
+}
