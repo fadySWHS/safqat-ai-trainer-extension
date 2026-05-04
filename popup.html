@@ -3,31 +3,138 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { width: 300px; padding: 10px; font-family: sans-serif; direction: rtl; }
-    input, button { width: 100%; margin-top: 10px; padding: 8px; box-sizing: border-box; }
-    #status { margin-top: 10px; color: green; font-size: 14px; text-align: center; }
+    body {
+      width: 300px;
+      padding: 10px;
+      font-family: sans-serif;
+      direction: rtl;
+    }
+
+    input,
+    button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: green;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* Toggle Switch CSS */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+    }
+    input:checked + .slider {
+      background-color: #6c5ce7;
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px);
+    }
+    .slider.round {
+      border-radius: 34px;
+    }
+    .slider.round:before {
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
   <div style="text-align:center; margin-bottom: 15px;">
     <h3>إعدادات أداة تدريب الذكاء الاصطناعي</h3>
-    <p style="font-size: 12px; color: #555;">(Safqat AI Trainer)</p>
+    <p style="font-size: 12px; color: #555;">Safqat AI Trainer</p>
   </div>
-  
+
   <label for="orKey">مفتاح OpenRouter:</label>
   <input type="password" id="orKey" placeholder="sk-or-v1-..." />
-  
-  <label for="repKey" style="display:block; margin-top:10px;">مفتاح Replicate (لتحويل الصوت):</label>
+
+  <label for="repKey" style="display:block; margin-top:10px;">مفتاح Replicate (للصوت):</label>
   <input type="password" id="repKey" placeholder="r8_..." />
-  
-  <label for="summaryLevel" style="display:block; margin-top:15px; font-weight:bold; color:#333;">مستوى التفاصيل (1 سريع - 10 تفصيلي):</label>
+
+  <label for="summaryLevel" style="display:block; margin-top:15px; font-weight:bold; color:#333;">
+    مستوى التفاصيل (1 سريع - 10 تفصيلي)
+  </label>
   <input type="range" id="summaryLevel" min="1" max="10" value="5" style="width:100%; margin-top:8px; cursor:pointer; accent-color:#6c5ce7;" />
   <div style="text-align:center; font-weight:bold; font-size:18px; color:#6c5ce7; margin-bottom:10px;" id="levelValue">5</div>
 
-  <button id="saveBtn" style="background:#6c5ce7; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; transition:0.2s;">حفظ البيانات</button>
-  
+  <button id="saveBtn" style="background:#6c5ce7; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; transition:0.2s;">
+    حفظ البيانات
+  </button>
+
   <div id="status"></div>
-  
+
+  <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <span style="font-weight: bold; color: #1e293b;">تفعيل الإضافة بالكامل</span>
+      <label class="switch">
+        <input type="checkbox" id="extensionEnabled" checked>
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <h4 style="margin-bottom: 10px; color: #333; font-size: 13px;">تخصيص الأزرار:</h4>
+    
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #444;">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showSummarize" checked /> تلخيص المحادثة
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showImprovement" checked /> مقترحات تحسين المنتج
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showProblem" checked /> تحديد المشكلة والتقنية
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showSupport" checked /> تحويل للدعم
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showApprove" checked /> موافق، إغلاق
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showDetect" checked /> استيراد بيانات العميل
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="showMic" checked /> أيقونة الميكروفون (التصحيح الصوتي)
+      </label>
+    </div>
+  </div>
+
+  <div style="margin-top: 14px; padding: 10px; border-radius: 8px; background: #f4f0ff; color: #4c1d95; font-size: 12px; line-height: 1.5;">
+    زر تحويل المحادثة إلى الدعم يظهر داخل شريط الأدوات في صفحة محادثة Safqat. بعد التحديث، أعد تحميل الإضافة ثم حدّث صفحة Safqat.
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
