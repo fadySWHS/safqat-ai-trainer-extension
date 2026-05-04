@@ -94,7 +94,7 @@ async function callChatApi(apiConfig, promptTemplate, messagesText, options = {}
     method: "POST",
     headers: headers,
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
+      model: isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: options.temperature ?? 0.7
     })
