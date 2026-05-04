@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const orKeyInput = document.getElementById("orKey");
+  const oaKeyInput = document.getElementById("oaKey");
   const repKeyInput = document.getElementById("repKey");
   const summaryLevelInput = document.getElementById("summaryLevel");
   const levelValueText = document.getElementById("levelValue");
@@ -18,13 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const buttonCheckboxes = [showSummarize, showImprovement, showProblem, showSupport, showApprove, showDetect, showMic];
 
   const settingsKeys = [
-    "or_key", "rep_key", "summary_level", "extension_enabled",
+    "or_key", "oa_key", "rep_key", "summary_level", "extension_enabled",
     "show_summarize", "show_improvement", "show_problem",
     "show_support", "show_approve", "show_detect", "show_mic"
   ];
 
   chrome.storage.local.get(settingsKeys, data => {
     if (data.or_key) orKeyInput.value = data.or_key;
+    if (data.oa_key) oaKeyInput.value = data.oa_key;
     if (data.rep_key) repKeyInput.value = data.rep_key;
     if (data.summary_level) {
       summaryLevelInput.value = data.summary_level;
@@ -62,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   saveButton.addEventListener("click", () => {
     chrome.storage.local.set({
       or_key: orKeyInput.value.trim(),
+      oa_key: oaKeyInput.value.trim(),
       rep_key: repKeyInput.value.trim(),
       summary_level: summaryLevelInput.value,
       extension_enabled: extensionEnabled.checked,

@@ -4,51 +4,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return undefined;
   }
 
-  chrome.storage.local.get(["or_key", "rep_key", "summary_level"], (data) => {
+  chrome.storage.local.get(["or_key", "oa_key", "rep_key", "summary_level"], (data) => {
     const orKey = data.or_key;
+    const oaKey = data.oa_key;
     const repKey = data.rep_key;
     const level = data.summary_level || 5;
 
-    if (!orKey && (request.action === "summarize" || request.action === "supportTicket" || request.action === "improvementSuggestions" || request.action === "identifyProblem")) {
-      sendResponse({ error: "OpenRouter Key not found. Please set it in the popup." });
+    const hasChatKey = orKey || oaKey;
+
+    if (!hasChatKey && (request.action === "summarize" || request.action === "supportTicket" || request.action === "improvementSuggestions" || request.action === "identifyProblem")) {
+      sendResponse({ error: "No API Key found. Please set either OpenRouter or OpenAI key in the popup." });
       return;
     }
 
-    if ((!orKey || !repKey) && request.action === "transcribe") {
-      sendResponse({ error: "Both OpenRouter and Replicate keys are required for voice. Set them in the popup." });
+    if ((!hasChatKey || !repKey) && request.action === "transcribe") {
+      sendResponse({ error: "Both a Chat API key (OpenRouter/OpenAI) and Replicate key are required for voice features." });
       return;
     }
+
+    const apiConfig = { orKey, oaKey };
 
     if (request.action === "summarize") {
       const promptTemplate = getPromptFromLevel(level);
-      callOpenRouterChat(orKey, promptTemplate, request.messages)
+      callChatApi(apiConfig, promptTemplate, request.messages)
         .then(reply => sendResponse({ summary: reply }))
         .catch(err => sendResponse({ error: err.message || err.toString() }));
       return;
     }
 
     if (request.action === "improvementSuggestions") {
-      generateImprovementSuggestions(orKey, request.messages)
+      generateImprovementSuggestions(apiConfig, request.messages)
         .then(suggestions => sendResponse({ suggestions }))
         .catch(err => sendResponse({ error: err.message || err.toString() }));
       return;
     }
 
     if (request.action === "identifyProblem") {
-      identifyProblemLogic(orKey, request.messages)
+      identifyProblemLogic(apiConfig, request.messages)
         .then(problem => sendResponse({ problem }))
         .catch(err => sendResponse({ error: err.message || err.toString() }));
       return;
     }
 
     if (request.action === "supportTicket") {
-      createSupportTicket(orKey, request.messages, request.customerInfo || {}, request.pageUrl || "")
+      createSupportTicket(apiConfig, request.messages, request.customerInfo || {}, request.pageUrl || "")
         .then(message => sendResponse({ message }))
         .catch(err => sendResponse({ error: err.message || err.toString() }));
       return;
     }
 
-    callReplicateWhisper(repKey, orKey, request.audioDataUri)
+    callReplicateWhisper(repKey, apiConfig, request.audioDataUri)
       .then(text => sendResponse({ text }))
       .catch(err => sendResponse({ error: err.message || err.toString() }));
   });
@@ -67,28 +72,39 @@ function getPromptFromLevel(level) {
   return "Provide a highly detailed, comprehensive breakdown of this conversation in Arabic. Extract all specific client requirements, analyze how accurately the AI responded, and point out any subtle mistakes or missing information. Format with bullet points for readability. Do not leave any detail out.";
 }
 
-async function callOpenRouterChat(orKey, promptTemplate, messagesText) {
-  const prompt = `${promptTemplate}\n\nConversation:\n${messagesText}`;
+async function callChatApi(apiConfig, promptTemplate, messagesText, options = {}) {
+  const prompt = promptTemplate ? `${promptTemplate}\n\nConversation:\n${messagesText}` : messagesText;
+  const { orKey, oaKey } = apiConfig;
+  
+  const isOpenRouter = !!orKey;
+  const apiKey = orKey || oaKey;
+  const url = isOpenRouter ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
+  
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`
+  };
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  if (isOpenRouter) {
+    headers["HTTP-Referer"] = "https://safqat.ai";
+    headers["X-Title"] = "Safqat AI Trainer";
+  }
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${orKey}`,
-      "HTTP-Referer": "https://safqat.ai",
-      "X-Title": "Safqat AI Trainer"
-    },
+    headers: headers,
     body: JSON.stringify({
       model: "openai/gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
+      messages: [{ role: "user", content: prompt }],
+      temperature: options.temperature ?? 0.7
     })
   });
 
-  const data = await readOpenRouterResponse(response);
+  const data = await readChatApiResponse(response, isOpenRouter ? "OpenRouter" : "OpenAI");
   return data.choices[0].message.content;
 }
 
-async function generateImprovementSuggestions(orKey, messagesText) {
+async function generateImprovementSuggestions(apiConfig, messagesText) {
   const prompt = [
     "You are a Senior Product Manager at Safqat.",
     "Based on the following conversation between a client and an AI assistant, identify clear and summarized improvements that can be made to the product or service to solve the client's underlying problem.",
@@ -102,26 +118,10 @@ async function generateImprovementSuggestions(orKey, messagesText) {
     messagesText
   ].join("\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${orKey}`,
-      "HTTP-Referer": "https://safqat.ai",
-      "X-Title": "Safqat AI Trainer"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7
-    })
-  });
-
-  const data = await readOpenRouterResponse(response);
-  return data.choices[0].message.content;
+  return callChatApi(apiConfig, null, prompt, { temperature: 0.7 });
 }
 
-async function identifyProblemLogic(orKey, messagesText) {
+async function identifyProblemLogic(apiConfig, messagesText) {
   const prompt = [
     "You are a Senior Technical Support Analyst.",
     "Read the following conversation and identify the main problem the client is facing.",
@@ -134,26 +134,10 @@ async function identifyProblemLogic(orKey, messagesText) {
     messagesText
   ].join("\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${orKey}`,
-      "HTTP-Referer": "https://safqat.ai",
-      "X-Title": "Safqat AI Trainer"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3
-    })
-  });
-
-  const data = await readOpenRouterResponse(response);
-  return data.choices[0].message.content;
+  return callChatApi(apiConfig, null, prompt, { temperature: 0.3 });
 }
 
-async function createSupportTicket(orKey, conversationText, customerInfo, pageUrl) {
+async function createSupportTicket(apiConfig, conversationText, customerInfo, pageUrl) {
   const prompt = [
     "You are a support escalation assistant for Safqat.",
     "Read the conversation and turn it into a handoff ticket for a human support agent.",
@@ -180,26 +164,9 @@ async function createSupportTicket(orKey, conversationText, customerInfo, pageUr
     `Source URL: ${valueOrMissing(pageUrl)}`
   ].join("\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${orKey}`,
-      "HTTP-Referer": "https://safqat.ai",
-      "X-Title": "Safqat AI Trainer"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
-      messages: [{
-        role: "user",
-        content: `${prompt}\n\nCustomer Info:\n${customerBlock}\n\nConversation:\n${conversationText}`
-      }],
-      temperature: 0.2
-    })
-  });
+  const fullPrompt = `${prompt}\n\nCustomer Info:\n${customerBlock}\n\nConversation:\n${conversationText}`;
 
-  const data = await readOpenRouterResponse(response);
-  const rawContent = data.choices[0].message.content;
+  const rawContent = await callChatApi(apiConfig, null, fullPrompt, { temperature: 0.2 });
   const parsed = parseSupportTicketResponse(rawContent);
   const ticketId = buildTicketId();
   const normalizedCustomer = {
@@ -220,14 +187,14 @@ async function createSupportTicket(orKey, conversationText, customerInfo, pageUr
   });
 }
 
-async function readOpenRouterResponse(response) {
+async function readChatApiResponse(response, providerName) {
   const rawText = await response.text();
   let data;
 
   try {
     data = JSON.parse(rawText);
   } catch {
-    throw new Error(rawText || `OpenRouter API Error: ${response.status}`);
+    throw new Error(rawText || `${providerName} API Error: ${response.status}`);
   }
 
   if (!response.ok) {
@@ -235,12 +202,12 @@ async function readOpenRouterResponse(response) {
       data?.error?.message ||
       data?.message ||
       response.statusText ||
-      `OpenRouter API Error: ${response.status}`;
+      `${providerName} API Error: ${response.status}`;
     throw new Error(message);
   }
 
   if (!data?.choices?.[0]?.message?.content) {
-    throw new Error("OpenRouter returned an empty response.");
+    throw new Error(`${providerName} returned an empty response.`);
   }
 
   return data;
@@ -442,7 +409,7 @@ function formatArabicDate(isoDate) {
   return date.toLocaleString("ar-EG");
 }
 
-async function callReplicateWhisper(repKey, orKey, dataUri) {
+async function callReplicateWhisper(repKey, apiConfig, dataUri) {
   const createResp = await fetch("https://api.replicate.com/v1/models/openai/whisper/predictions", {
     method: "POST",
     headers: {
@@ -476,27 +443,10 @@ async function callReplicateWhisper(repKey, orKey, dataUri) {
   }
 
   const text = prediction.output.transcription;
-  return refineToFormalArabic(orKey, text);
+  return refineToFormalArabic(apiConfig, text);
 }
 
-async function refineToFormalArabic(orKey, text) {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${orKey}`,
-      "HTTP-Referer": "https://safqat.ai",
-      "X-Title": "Safqat AI Trainer"
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
-      messages: [{
-        role: "user",
-        content: `Rewrite the following text into perfect Formal Arabic Language (اللغة العربية الفصحى) without adding context, explanations, or quotes. Just return the fixed text exactly:\n\n${text}`
-      }]
-    })
-  });
-
-  const data = await readOpenRouterResponse(response);
-  return data.choices[0].message.content;
+async function refineToFormalArabic(apiConfig, text) {
+  const prompt = `Rewrite the following text into perfect Formal Arabic Language (اللغة العربية الفصحى) without adding context, explanations, or quotes. Just return the fixed text exactly:\n\n${text}`;
+  return callChatApi(apiConfig, null, prompt, { temperature: 0 });
 }
